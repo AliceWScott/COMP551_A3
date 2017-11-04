@@ -5,5 +5,8 @@ If the letter is 'A' or 'a', the network should predict the sum of the two digit
 If the letter is 'M' or 'm', it should predict their product.
 The data files are too large to upload here. 
 
-# Running the Feedforward NN
+## Dependencies
+Numpy: '1.21.1'
+
+## Running the Feedforward NN
 python cross_validation.py
