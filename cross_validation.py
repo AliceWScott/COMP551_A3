@@ -30,7 +30,7 @@ def loadData(x_file, y_file):
 '''
 def train(x_file, y_file):
 
-	training_set = loadFromFile(x_file, y_file)
+	training_set = loadData(x_file, y_file)
 	np.random.shuffle(training_set)
 	
 	print 'starting training...'
