@@ -7,6 +7,14 @@ The data files are too large to upload here.
 
 ## Dependencies
 Numpy: '1.21.1'
+Theano
+Timeit
+Pickle
+Sklearn
+cPickle
+
+## Running the Logistic Regression
+python LR.py
 
 ## Running the Feedforward NN
 python cross_validation.py
