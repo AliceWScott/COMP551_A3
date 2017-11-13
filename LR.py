@@ -1,3 +1,7 @@
+#
+# Original code sourced from https://www.quantstart.com/articles/Deep-Learning-with-Theano-Part-1-Logistic-Regression
+# Author Michael Halls - Moore
+#
 from __future__ import print_function
 import six.moves.cPickle as pickle
 import timeit
@@ -6,7 +10,9 @@ import numpy as np
 import theano
 import theano.tensor as T
 from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
+
+def floatX(X):
+    return np.asarray(X, dtype=theano.config.floatX)
 
 class LogisticRegression(object):
     def __init__(self, x, num_in, num_out):
@@ -18,13 +24,13 @@ class LogisticRegression(object):
         num_out - Dimension of output (40)
         """
         # Initialise the shared weight matrix, 'W'
+        np.random.seed(42)
         self.W = theano.shared(
             value=np.zeros(
-                (num_in, num_out), dtype=theano.config.floatX
+                (num_in,num_out), dtype=theano.config.floatX
             ),
             name='W', borrow=True
         )
-
         # Initialise the shared bias vector, 'b'
         self.b = theano.shared(
             value=np.zeros(
@@ -33,9 +39,10 @@ class LogisticRegression(object):
             name='b', borrow=True
         )
 
-
+        #class scores
+        scores = T.dot(x, self.W) + self.b
         # Symbolic expression for P(Y=k \mid x; \theta)
-        self.p_y_x = T.nnet.softmax(T.dot(x, self.W) + self.b)
+        self.p_y_x = T.nnet.softmax(scores)
 
         # Symbolic expression for computing digit prediction
         self.y_pred = T.argmax(self.p_y_x, axis=1)
@@ -123,21 +130,20 @@ def load_mnist_data(train_x_file, train_y_file):
     return rval
 
 def stoch_grad_desc_train_model(
-    xfilename, yfilename, gamma, epochs, B):
+    trainset, validset, gamma, epochs, B):
     """
     Train the logistic regression model using
     stochastic gradient descent.
 
-    filename - File path of MNIST dataset
+    trainset, validset - Training set and Validation set from the  modified MNIST dataset
     gamma - Step size or "learning rate" for gradient descent
     epochs - Maximum number of epochs to run SGD
     B - The batch size for each minibatch
     """
     # Obtain the correct dataset partitions
-    datasets = load_mnist_data(xfilename, yfilename)
-    train_set_x, train_set_y = datasets[0]
-    valid_set_x, valid_set_y = datasets[1]
 
+    train_set_x, train_set_y = trainset
+    valid_set_x, valid_set_y = validset
     # Calculate the number of minibatches for each of
     # the training, validation and test dataset partitions
     # Note the use of the // operator which is for
@@ -160,7 +166,6 @@ def stoch_grad_desc_train_model(
     # Instantiate the logistic regression model and assign the cost
     logreg = LogisticRegression(x=x, num_in=4096, num_out=40)
     cost = logreg.negative_log_likelihood(y)  # This is what we minimise with SGD
-
 
     validate_model = theano.function(
         inputs=[index],
@@ -204,13 +209,14 @@ def stoch_grad_desc_train_model(
 
     # Set parameters to stop minibatch early
     # if performance is good enough
-    patience = 5000  # Minimum number of examples to look at
+    patience = 10000  # Minimum number of examples to look at
     patience_increase = 2  # Increase by this for new best score
     improvement_threshold = 0.995  # Relative improvement threshold
     # Train through this number of minibatches before
     # checking performance on the validation set
     validation_frequency = min(n_train_batches, patience // 2)
-
+    valloss = []
+    ep = []
     # Keep track of the validation loss and test scores
     best_validation_loss = np.inf
     test_score = 0.
@@ -226,10 +232,6 @@ def stoch_grad_desc_train_model(
 
         # Minibatch loop
         for minibatch_index in range(n_train_batches):
-            updates = [
-                        (logreg.W, logreg.W - gamma * grad_W),
-                        (logreg.b, logreg.b - gamma * grad_b)
-                      ]
             # Calculate the average likelihood for the minibatches
             minibatch_avg_cost = train_model(minibatch_index)
             iter = (cur_epoch - 1) * n_train_batches + minibatch_index
@@ -243,23 +245,15 @@ def stoch_grad_desc_train_model(
                     for i in range(n_valid_batches)
                 ]
                 this_validation_loss = np.mean(validation_losses)
-
-                # Output current validation results
-                print(
-                    "Epoch %i, Minibatch %i/%i, Validation Error %f %%" % (
-                        cur_epoch,
-                        minibatch_index + 1,
-                        n_train_batches,
-                        this_validation_loss * 100.
-                    )
-                )
+                valloss.append(this_validation_loss)
+                ep.append(cur_epoch)
 
                 # If we obtain the best validation score to date
                 if this_validation_loss < best_validation_loss:
                     # If the improvement in the loss is within the
                     # improvement threshold, then increase the
                     # number of iterations ("patience") until the next check
-                    gamma = gamma * 2
+
                     if this_validation_loss < best_validation_loss *  \
                         improvement_threshold:
                         patience = max(patience, iter * patience_increase)
@@ -270,8 +264,18 @@ def stoch_grad_desc_train_model(
 
                     with open('best_model.pkl', 'wb') as f:
                         pickle.dump(logreg, f)
-                else:
-                    gamma = gamma/2
+                print(
+                        (
+                            "     Epoch %i, Minibatch %i/%i, Test error of"
+                            " best model %f %%"
+                        ) % (
+                            cur_epoch,
+                            minibatch_index + 1,
+                            n_train_batches,
+                            this_validation_loss * 100.
+                        )
+                    )
+
             # If the iterations exceed the current "patience"
             # then we are finished looping for this minibatch
             if iter > patience:
@@ -293,6 +297,7 @@ def stoch_grad_desc_train_model(
         )
     )
     print("The code ran for %.1fs" % (end_time - start_time))
+
     return best_validation_loss
 
 def test_model(filename):
@@ -329,8 +334,10 @@ if __name__ == "__main__":
     # predictions to make on the testing data
 
     # Train the model via stochastic gradient descent
-    stoch_grad_desc_train_model("train_x.csv", "train_y.csv", 0.15, 500, 700)
+    datasets = load_mnist_data("train_x.csv", "train_y.csv")
+
+    stoch_grad_desc_train_model(datasets[0], datasets[1], 0.01, 1000, 512)
+
     preds = test_model("test_x.csv")
-    print (preds)
     np.savetxt("y_pred.csv", preds, delimiter=",", fmt="%i")
 
