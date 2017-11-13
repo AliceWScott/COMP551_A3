@@ -18,3 +18,9 @@ python LR.py
 
 ## Running the Feedforward NN
 python cross_validation.py
+
+## Running the Convolutional NN
+python CNN_FINALV1.py
+
+## Running the Recurrent NN
+python RNN.py
