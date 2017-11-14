@@ -14,20 +14,19 @@ import csv
 def loadData(x_file, y_file):
 
 	print 'loading sets from file...'
-
 	X = np.loadtxt(x_file, delimiter=",")
 	X = [np.reshape(x, (4096, 1)) for x in X]
-
 	Y = np.loadtxt(y_file, delimiter=",")
 	Y = Y.reshape(-1, 1)
 	Y = Y.flatten()
 
 	return zip(X,Y)
 
+
 '''
 	Performs cross-validation for hyperparameter tuning.
 '''
-def trainCV(training_set):
+def cross_validate(training_set):
 
 	np.random.shuffle(training_set)
 	
@@ -61,12 +60,12 @@ def trainCV(training_set):
 
 			nn = NN.FeedForwardNN(h[0], epsilon=h[1], reg_lambda=h[2])
 			nn.init_bias_and_weights()
-			nn.mini_batch_gradient_descent(max_epochs=h[3], 
-										   batch_size=16,
-										   training_set=train,
-										   validation_set=test)
+			nn.fit(max_epochs=h[3], 
+					batch_size=128,
+					training_set=train,
+					validation_set=test)
 			current_model = nn
-			accuracy = nn.getAccuracy(zip(nn.predict(test, getAccuracy=True, hasYVals=True), [y for (x,y) in test]))
+			accuracy = nn.getAccuracy(test)
 			fold_accuracies.append(accuracy)
 
 		# get mean accuracy of all folds
@@ -113,5 +112,8 @@ def predict_test_set(filename):
 
 if __name__ == "__main__":
 	training_set = loadData('./train_x.csv', './train_y.csv')
-	trainCV(training_set)
+	cross_validate(training_set)
 	predict_test_set('./test_x.csv')
+
+
+	
