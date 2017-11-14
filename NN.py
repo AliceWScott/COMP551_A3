@@ -139,8 +139,6 @@ class FeedForwardNN:
 		weighted_inputs, activations = self.forward_pass(X, set_activations=True) 
 		activation_matrix = [X] + activations
 
-		# print np.shape(activation_matrix[0]), np.shape(activation_matrix[1]), np.shape(activation_matrix[2])
-
 		# calculate output layer error vector
 		cost = self.cross_entropy_error(
 							act=activation_matrix[-1], 
@@ -166,6 +164,7 @@ class FeedForwardNN:
 
 		return gradient_biases, gradient_weights
 
+	
 	'''
 		Makes the predictions on the unlabelled test set.
 		Returns the index of the max argument in the forward pass, which gets converted to proper value.
@@ -176,8 +175,8 @@ class FeedForwardNN:
 		15, 16, 17, 18, 20, 21, 24, 25, 27, 28, 30, 32, 35,
 		 36, 40, 42, 45, 48, 49, 54, 56, 63, 64, 72, 81] 
 
-		test_results = [y_values[np.argmax(self.forward_pass(x))] for x in test_data]
-		return test_results
+		return [y_values[int(np.argmax(self.forward_pass(x)))] for x in test_data]
+
 
 	'''
 		Prints out validation/test set accuracy.
